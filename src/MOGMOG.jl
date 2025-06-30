@@ -1,5 +1,6 @@
 module MOGMOG
 
-# Write your package code here.
+include("pdf.jl")
+export logpdf_MOG
 
 end
