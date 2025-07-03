@@ -1,5 +1,3 @@
-using NNlib
-
 function logpdf_MOG(x::AbstractArray{Float64}, 
                         μ::AbstractArray{Float64}, 
                         σ::AbstractArray{Float64},
