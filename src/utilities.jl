@@ -15,3 +15,21 @@ function transform_molecule(X::AbstractMatrix{T}) where T
 end
 
 export transform_molecule
+
+
+
+function loss_fn_xyz(model, mol::Molecule)
+    pos = mol.positions  # (3, L)
+
+ 
+    #return (μ, σ, logw) for each axis
+    μ, σ, logw = model(pos[:, 1:end-1]) # (K, 3, L-1)
+
+    displacements = pos[:, 2:end] .- pos[:, 1:end-1]  # (3, L-1)
+    displacements = reshape(displacements, 1, size(displacements))  # (3, L-1) -> (1, 3, L-1)
+    logp = logpdf_MOG(displacements, μ, σ, logw)
+ 
+    return -mean(logp)
+end
+
+export loss_fn_xyz  
