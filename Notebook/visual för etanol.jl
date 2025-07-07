@@ -56,7 +56,7 @@ bonds = find_bonds(positions)
 
 # --------------------------
 # Visualisering
-set_theme!(theme_black())
+set_theme!(theme_light())
 fig = Figure(resolution = (800, 600))
 ax = Axis3(fig[1, 1], aspect = :data)
 
