@@ -12,6 +12,8 @@ export logpdf_MOG
 include("MOGhead.jl")
 export MoGAxisHead
 
+include("MOGfoot.jl")
+
 include("utilities.jl")
 export transform_molecule
 export loss_fn
