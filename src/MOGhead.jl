@@ -32,6 +32,6 @@ function AtomTypeHead(embed_dim::Int, vocab_size::Int)
     return AtomTypeHead(Dense(embed_dim, vocab_size; bias = false))  #(V, L)
 end
 
-function (head::AtomTypeHead)(embeddings::AbstractMatrix)
+function (head::AtomTypeHead)(embeddings::AbstractMatrix) 
     return head.linear_logits(embeddings)
 end
