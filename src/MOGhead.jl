@@ -4,6 +4,12 @@ struct MoGAxisHead
     linear_logw::Dense      # A layer that predict unnormalized log-weights
 end
 
+struct AtomTypeHead
+    linear_logits::Dense
+end
+
+#h[:,1,:]
+
 function MoGAxisHead(embed_dim::Int, n_components::Int)
     return MoGAxisHead(
         Dense(embed_dim, n_components),
@@ -19,4 +25,13 @@ function (head::MoGAxisHead)(axis_embeddings::AbstractMatrix)
     logw = logw .- logsumexp(logw; dims=1)
 
     return μ, σ, logw
+end
+
+
+function AtomTypeHead(embed_dim::Int, vocab_size::Int)
+    return AtomTypeHead(Dense(embed_dim, vocab_size; bias = false))  #(V, L)
+end
+
+function (head::AtomTypeHead)(embeddings::AbstractMatrix)
+    return head.linear_logits(embeddings)
 end

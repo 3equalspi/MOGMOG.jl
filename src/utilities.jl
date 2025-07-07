@@ -18,18 +18,26 @@ export transform_molecule
 
 
 
-function loss_fn_xyz(model, mol::Molecule)
-    pos = mol.positions  # (3, L)
+using Flux
 
- 
-    #return (μ, σ, logw) for each axis
-    μ, σ, logw = model(pos[:, 1:end-1]) # (K, 3, L-1)
+function loss_fn(model, mol::Molecule, atom_dict::Dict{String, Int})
+    pos = mol.positions
+    atoms = mol.atoms
 
-    displacements = pos[:, 2:end] .- pos[:, 1:end-1]  # (3, L-1)
-    displacements = reshape(displacements, 1, size(displacements))  # (3, L-1) -> (1, 3, L-1)
-    logp = logpdf_MOG(displacements, μ, σ, logw)
- 
-    return -mean(logp)
+    μ, σ, logw, logits = model(pos[:, 1:end-1])
+
+    displacements = pos[:, 2:end] .- pos[:, 1:end-1]
+    displacements = reshape(displacements, 1, size(displacements))
+
+    logp_xyz = logpdf_MOG(displacements, μ, σ, logw)
+    loss_xyz = -mean(logp_xyz)
+
+    atom_inds = [atom_dict[a] for a in atoms[2:end]]
+    atom_onehot = onehotbatch(atom_inds, 1:length(atom_dict))
+    loss_type = logitcrossentropy(logits, atom_onehot)
+
+    return loss_xyz + loss_type
 end
 
-export loss_fn_xyz  
+
+export loss_fn 
