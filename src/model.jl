@@ -2,9 +2,7 @@
 struct MOGMOGModel
     foot                  # Input encoder (positions + types → embeddings)
     body::Vector{DART}    # Transformer blocks
-    head_x::MoGAxisHead
-    head_y::MoGAxisHead
-    head_z::MoGAxisHead
+    mog_head::MoGAxisHead
     atom_head::AtomTypeHead
 end
 
@@ -15,12 +13,10 @@ function MOGMOGModel(embed_dim::Int, n_components::Int, vocab_size::Int; depth::
     body = [DART(TransformerBlock(embed_dim, n_heads)) for _ in 1:depth]
 
     # Output heads
-    head_x = MoGAxisHead(embed_dim, n_components)
-    head_y = MoGAxisHead(embed_dim, n_components)
-    head_z = MoGAxisHead(embed_dim, n_components)
+    mog_head = MoGAxisHead(embed_dim, n_components)
     atom_head = AtomTypeHead(embed_dim, vocab_size)
 
-    return MOGMOGModel(foot, body, head_x, head_y, head_z, atom_head)
+    return MOGMOGModel(foot, body, mog_head, atom_head)
 end
 
 function (mmm::MOGMOGModel)(positions::Matrix{Float64}, atom_types::Vector{Int})
@@ -33,10 +29,8 @@ function (mmm::MOGMOGModel)(positions::Matrix{Float64}, atom_types::Vector{Int})
     end
 
     # Output heads
-    μx, σx, logwx = mmm.head_x(x)
-    μy, σy, logwy = mmm.head_y(x)
-    μz, σz, logwz = mmm.head_z(x)
+    μ, σ, logw = mmm.head_x(x)
     logits = mmm.atom_head(x)
 
-    return μx, σx, logwx, μy, σy, logwy, μz, σz, logwz, logits
+    return μ, σ, logw, logits
 end
