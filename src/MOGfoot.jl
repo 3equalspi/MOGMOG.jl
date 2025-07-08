@@ -28,13 +28,13 @@ end
 function (foot::MOGfoot)(atom_types::AbstractArray{Int}, coordinates::AbstractArray{<:AbstractFloat})
     L = length(atom_types)
     # D x L x B
-    atom_embedding = foot.atom_embed(atom_types[1:L-1,:]) .+
-        foot.current_coord_embed(coordinates[:,1:L-1,:]) .+
-        foot.position_embed(1:L-1)
+    atom_embedding = foot.atom_embed(atom_types[1:L-1, :]) .+
+        foot.current_coord_embed(coordinates[:,1:L-1, :]) .+
+        foot.position_embed(reshape(1:L-1, 1, L-1))
     # D x L x B --> D x 4 x L x B
-    with_next_atom = atom_embedding + foot.atom_embed(atom_types[2:L])
-    with_next_x = with_next_atom + foot.next_x(coordinates[2:L])
-    with_next_y = with_next_x + foot.next_y(coordinates[2:L])
+    with_next_atom = atom_embedding + foot.atom_embed(atom_types[2:L, :])
+    with_next_x = with_next_atom + foot.next_x(coordinates[1:1, 2:L, :])
+    with_next_y = with_next_x + foot.next_y(coordinates[2:2, 2:L, :])
     concatenated = vcat(atom_embedding, with_next_atom, with_next_x, with_next_y) # 4D x L x B
     return rearrange(concatenated, einops"(d k) l b -> d k l b", k=4)
 end

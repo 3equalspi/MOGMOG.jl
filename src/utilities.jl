@@ -20,9 +20,7 @@ export transform_molecule
 
 using Flux
 
-function loss_fn(model, mol::Molecule, atom_dict::Dict{String, Int})
-    pos = mol.positions
-    atoms = mol.atoms
+function loss_fn(model, pos, atoms, atom_dict::Dict{String, Int})
 
     μ, σ, logw, logits = model(pos[:, 1:end-1])
 

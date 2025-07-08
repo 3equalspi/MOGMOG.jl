@@ -1,6 +1,6 @@
 # MOGMOG.jl - A model for molecular embeddings using Mixture of Gaussians (MoG) and Transformers
 struct MOGMOGModel
-    foot                  # Input encoder (positions + types → embeddings)
+    foot::MOGfoot                  # Input encoder (positions + types → embeddings)
     body::Vector{DART}    # Transformer blocks
     mog_head::MoGAxisHead
     atom_head::AtomTypeHead
