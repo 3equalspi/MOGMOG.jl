@@ -1,5 +1,6 @@
 module MOGMOG
 
+using Statistics
 using LinearAlgebra
 using Flux
 using NNlib

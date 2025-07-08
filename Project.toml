@@ -12,6 +12,7 @@ NNlib = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 Onion = "fdebf6c2-71da-43a1-b539-c3bc3e09c5c6"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RandomFeatureMaps = "780baa95-dd42-481b-93db-80fe3d88832c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
 DLProteinFormats = "0.1.4"
@@ -22,4 +23,5 @@ NNlib = "0.9.30"
 Onion = "0.1.2"
 Random = "1.11.0"
 RandomFeatureMaps = "0.2.2"
+Statistics = "1.11.1"
 julia = "1.10"

@@ -31,8 +31,8 @@ function (mmm::MOGMOGModel)(positions::AbstractArray{<:AbstractFloat}, atom_type
     end
 
     # Output heads
-    μ, σ, logw = mmm.mog_head(x)
-    logits = mmm.atom_head(x)
+    μ, σ, logw = mmm.mog_head(x[:,2:4,:,:])
+    logits = mmm.atom_head(x[:,1:1,:,:])
 
     return μ, σ, logw, logits
 end
