@@ -7,7 +7,7 @@ using Random
 using Onion
 using RandomFeatureMaps
 
-include("pdf.jl")
+include("loss.jl")
 export logpdf_MOG
 
 include("MOGhead.jl")
