@@ -18,7 +18,7 @@ function MoGAxisHead(embed_dim::Int, n_components::Int)
     )
 end
 
-function (head::MoGAxisHead)(axis_embeddings::AbstractMatrix)
+function (head::MoGAxisHead)(axis_embeddings::AbstractArray)
     μ = head.linear_μ(axis_embeddings)
     σ = head.linear_σ(axis_embeddings)
     logw = head.linear_logw(axis_embeddings)
@@ -32,6 +32,6 @@ function AtomTypeHead(embed_dim::Int, vocab_size::Int)
     return AtomTypeHead(Dense(embed_dim, vocab_size; bias = false))  #(V, L)
 end
 
-function (head::AtomTypeHead)(embeddings::AbstractMatrix) 
+function (head::AtomTypeHead)(embeddings::AbstractArray) 
     return head.linear_logits(embeddings)
 end

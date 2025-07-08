@@ -15,29 +15,3 @@ function transform_molecule(X::AbstractMatrix{T}) where T
 end
 
 export transform_molecule
-
-
-
-using Flux
-
-function loss_fn(model, pos, atoms, atom_dict::Dict{String, Int})
-
-    μ, σ, logw, logits = model(pos[:, 1:end-1])
-
-    displacements = pos[:, 2:end] .- pos[:, 1:end-1]
-    displacements = reshape(displacements, 1, size(displacements))
-
-    logp_xyz = logpdf_MOG(displacements, μ, σ, logw)
-    loss_xyz = -mean(logp_xyz)
-
-    atom_inds = [atom_dict[a] for a in atoms[2:end]]
-    atom_onehot = onehotbatch(atom_inds, 1:length(atom_dict))
-    loss_type = logitcrossentropy(logits, atom_onehot)
-
-    return loss_xyz + loss_type
-end
-
-
-export loss_fn 
-
-
