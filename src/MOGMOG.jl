@@ -20,6 +20,6 @@ export MOGMOGModel
 
 include("utilities.jl")
 export transform_molecule
-export loss_fn
+export loss
 
 end
