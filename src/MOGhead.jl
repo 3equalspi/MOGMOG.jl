@@ -23,8 +23,6 @@ function (head::MoGAxisHead)(axis_embeddings::AbstractArray)
     σ = head.linear_σ(axis_embeddings)
     logw = head.linear_logw(axis_embeddings)
     logw = logw .- logsumexp(logw; dims=1)
-    @show size(axis_embeddings)
-
     return μ, σ, logw
 end
 

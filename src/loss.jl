@@ -2,10 +2,6 @@ function logpdf_MOG(x::AbstractArray{<:AbstractFloat},
                         μ::AbstractArray{<:AbstractFloat}, 
                         σ::AbstractArray{<:AbstractFloat},
                         logw::AbstractArray{<:AbstractFloat})
-    @show size(x)
-    @show size(μ)
-    @show size(σ)
-    @show size(logw)
     return logsumexp((@. logw - log(σ) - 0.5 * log(2π) - (x - μ)^2 / (2 * σ^2)), dims=1)
 end
 
@@ -19,7 +15,6 @@ function loss(model, atom_ids, pos, atom_mask, coord_mask)
     disp = pos[:, 2:end, :] .- pos[:, 1:end-1, :]
     disp = reshape(disp, 1, size(disp)...)
     logp_xyz = logpdf_MOG(disp, μ, σ, logw)
-    @show size(logp_xyz)
     loss_xyz = -sum(logp_xyz .* reshape(coord_mask, 1, 1, size(coord_mask)...)) / sum(coord_mask)
  
     atom_onehot = Flux.onehotbatch(target_atoms, 1:size(logits, 1))
