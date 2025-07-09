@@ -26,7 +26,7 @@ end
 #  0.306506   0.0206321  0.417595  0.76132    0.203126
 #  0.0464874  0.290774   0.102366  0.206444   0.338374
 function (foot::MOGfoot)(atom_types::AbstractArray{Int}, coordinates::AbstractArray{<:AbstractFloat})
-    L = length(atom_types)
+    L = size(atom_types, 1)
     # D x L x B
     atom_embedding = foot.atom_embed(atom_types[1:L-1, :]) .+
         foot.current_coord_embed(coordinates[:,1:L-1, :]) .+

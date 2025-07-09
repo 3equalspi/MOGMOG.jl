@@ -10,26 +10,24 @@ function logpdf_MOG(x::AbstractArray{<:AbstractFloat},
 end
 
 # 11.586529630541413
-function loss(model, pos, atoms, vocab_size)
+export loss
 
-    μ, σ, logw, logits = model(pos, atoms)
+function loss(model, atom_ids, pos, atom_mask, coord_mask)
+    target_atoms = atom_ids[2:end, :]
+ 
+    μ, σ, logw, logits = model(pos, atom_ids)
+    disp = pos[:, 2:end, :] .- pos[:, 1:end-1, :]
+    disp = reshape(disp, 1, size(disp)...)
+    logp_xyz = logpdf_MOG(disp, μ, σ, logw)
+    @show size(logp_xyz)
+    loss_xyz = -sum(logp_xyz .* reshape(coord_mask, 1, 1, size(coord_mask)...)) / sum(coord_mask)
+ 
+    atom_onehot = Flux.onehotbatch(target_atoms, 1:size(logits, 1))
 
-    displacements = pos[:, 2:end] .- pos[:, 1:end-1]
-    displacements = reshape(displacements, 1, size(displacements)...)
-
-    logp_xyz = logpdf_MOG(
-        displacements,
-        μ,
-        σ,
-        logw)
-    loss_xyz = -mean(logp_xyz)
-
-    atom_onehot = Flux.onehotbatch(atoms[2:end], 1:vocab_size)
-    loss_type = Flux.logitcrossentropy(
-        rearrange(logits, (:v, 1, :l_1, 1) --> (:v, :l_1)),
-        atom_onehot) # vocab_size x L+1
-
+    atom_mask = reshape(atom_mask, 1, size(atom_mask)...)
+    masked_mean(p) = sum(p .* atom_mask) / sum(atom_mask)
+ 
+    loss_type = Flux.logitcrossentropy(dropdims(logits, dims=2), atom_onehot; agg=masked_mean)
+ 
     return loss_xyz + loss_type
 end
-
-export loss
