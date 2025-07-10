@@ -1,4 +1,6 @@
-using Flux, JLD2, Random, Statistics
+using Flux, JLD2, Random, Statistics, Onion, RandomFeatureMaps, Onion.Einops
+using Pkg
+Pkg.add("Plots")
 
 include("loss.jl")
 include("MOGhead.jl")
@@ -9,7 +11,15 @@ include("utilities.jl")
 export logpdf_MOG, MoGAxisHead, MOGMOGModel, transform_molecule, loss
 
 # Load molecules
-@load "processed_molecules.jld2" result
+@load expanduser("~/processed_molecules.jld2") result
+
+struct Molecule
+    atoms::Vector{String}
+    positions::Matrix{Float64}
+end
+
+Base.length(mol::Molecule) = length(mol.atoms)
+
 
 # Atom dictionary
 atom_dict = Dict(name => i for (i, name) in enumerate(["C", "F", "H", "N", "O", "STOP"]))
@@ -22,8 +32,8 @@ vocab_size = length(atom_dict)
 depth = 4
 max_len = 32
 batchsize = 4
-nbatches = 100
-nepochs = 1
+nbatches = 1000
+nepochs = 100
 
 # Initialize model and optimizer
 model = MOGMOGModel(embed_dim, n_components, vocab_size, depth=depth)
