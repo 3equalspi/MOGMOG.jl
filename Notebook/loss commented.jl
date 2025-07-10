@@ -3,10 +3,6 @@ function logpdf_MOG(x::AbstractArray{<:AbstractFloat},
     μ::AbstractArray{<:AbstractFloat}, 
     σ::AbstractArray{<:AbstractFloat},
     logw::AbstractArray{<:AbstractFloat})
-@show size(x)     # Visa storleken på indata-displacementen (1, 3, L-1, B)
-@show size(μ)     # Visa storleken på Gaussiska medelvärden (komponenter)
-@show size(σ)     # Visa storleken på standardavvikelser
-@show size(logw)  # Visa storleken på logaritmerade vikter
 
 # Beräkna log-sannolikheten enligt mixad Gaussisk sannolikhetsformel
 return logsumexp((@. logw - log(σ) - 0.5 * log(2π) - (x - μ)^2 / (2 * σ^2)), dims=1)

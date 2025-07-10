@@ -1,38 +1,36 @@
 # MOGMOG.jl - A model for molecular embeddings using Mixture of Gaussians (MoG) and Transformers
-struct MOGMOGModel
-    foot::MOGfoot                  # Input encoder (positions + types → embeddings)
-    body::Vector{DART}    # Transformer blocks
-    mog_head::MoGAxisHead
-    atom_head::AtomTypeHead
+@concrete struct MOGMOGModel
+    encoder <: MOGencoder                 # Input encoder (positions + types → embeddings)
+    darts <: Tuple{Vararg{<:DART}}    # Transformer blocks
+    mog_decoder <: MOG
+    atom_decoder <: Dense
 end
 
 Flux.@layer MOGMOGModel
 
-function MOGMOGModel(embed_dim::Int, n_components::Int, vocab_size::Int; depth::Int = 6, n_heads::Int = 4)
-    # Bottom encoder: positions + types to embeddings
-    foot = MOGfoot(embed_dim, vocab_size)  #
-    # Transformer body 
-    body = [DART(TransformerBlock(embed_dim, n_heads)) for _ in 1:depth]
+function MOGMOGModel(; embed_dim::Int, mixture_components::Int, vocab_size::Int, depth::Int, heads::Int)
+    # Input encoder
+    encoder = MOGencoder(embed_dim, vocab_size)
 
-    # Output heads
-    mog_head = MoGAxisHead(embed_dim, n_components)
-    atom_head = AtomTypeHead(embed_dim, vocab_size)
+    # Doubly Auto-Regressive Transformer stack
+    darts = ntuple(i -> DART(TransformerBlock(embed_dim, heads)), depth)
 
-    return MOGMOGModel(foot, body, mog_head, atom_head)
+    # Decoders
+    mog_decoder = MOG(embed_dim, mixture_components)
+    atom_decoder = Dense(embed_dim, vocab_size, bias=false)
+
+    return MOGMOGModel(encoder, darts, mog_decoder, atom_decoder)
 end
 
-function (mmm::MOGMOGModel)(positions::AbstractArray{<:AbstractFloat}, atom_types::AbstractArray{Int})
-    # Input encoding
-    x = mmm.foot(atom_types, positions)  # (embed_dim, L)
+function (mmm::MOGMOGModel)(atom_types::AbstractArray{Int}, positions::AbstractArray{<:AbstractFloat})
+    h = mmm.encoder(atom_types, positions) # D x L x B
 
-    # Transformer body
-    for layer in mmm.body
-        x = layer(x)  # (embed_dim, L)
+    for dart in mmm.darts
+        h = dart(h)
     end
 
-    # Output heads
-    μ, σ, logw = mmm.mog_head(x[:,2:4,:,:])
-    logits = mmm.atom_head(x[:,1:1,:,:])
+    logits = mmm.atom_decoder(h[:, 1, :, :]) # V x L x B
+    μ, σ, logw = mmm.mog_decoder(h[:, 2:4, :, :]) # K x 3 x L x B
 
-    return μ, σ, logw, logits
+    return logits, μ, σ, logw
 end

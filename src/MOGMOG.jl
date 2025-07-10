@@ -1,26 +1,33 @@
 module MOGMOG
 
-using Statistics
-using LinearAlgebra
+using ConcreteStructs
+using Einops
 using Flux
+using LinearAlgebra
+using Manifolds
 using NNlib
-using Random
 using Onion
+using Random
 using RandomFeatureMaps
+using Statistics
 
-include("loss.jl")
-export logpdf_MOG
+include("encoder.jl")
+export MOGencoder
 
-include("MOGhead.jl")
-export MoGAxisHead
-
-include("MOGfoot.jl")
+include("mog.jl")
+export MOG
 
 include("model.jl")
 export MOGMOGModel
 
-include("utilities.jl")
-export transform_molecule
+include("loss.jl")
 export loss
+
+include("utils.jl")
+export Molecule
+export apply_random_rigid
+export pad_and_batch
+
+include("inference.jl")
 
 end
