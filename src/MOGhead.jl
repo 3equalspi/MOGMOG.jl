@@ -20,7 +20,7 @@ end
 
 function (head::MoGAxisHead)(axis_embeddings::AbstractArray)
     μ = head.linear_μ(axis_embeddings)
-    σ = head.linear_σ(axis_embeddings)
+    σ = 0.001f0 .+  head.linear_σ(axis_embeddings)
     logw = head.linear_logw(axis_embeddings)
     logw = logw .- logsumexp(logw; dims=1)
     return μ, σ, logw
