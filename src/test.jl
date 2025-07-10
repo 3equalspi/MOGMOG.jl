@@ -1,6 +1,4 @@
 using Flux, JLD2, Random, Statistics, Onion, RandomFeatureMaps, Onion.Einops
-using Pkg
-Pkg.add("Plots")
 
 include("loss.jl")
 include("MOGhead.jl")
@@ -60,6 +58,8 @@ function pad_batch(mols::Vector{Molecule})
     return atom_ids, positions, atom_mask, coord_mask
 end
 
+using Serialization
+
 # Training loop
 all_losses = Float32[]
 for epoch in 1:nepochs
@@ -79,6 +79,7 @@ for epoch in 1:nepochs
 
         println("Batch $i, loss = $(round(loss_val, digits=4))")
     end
+    serialize("model-$epoch.jls", model)
 end
 
 # Save loss plot
