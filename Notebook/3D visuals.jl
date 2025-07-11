@@ -1,31 +1,75 @@
-using GLMakie, JLD2
+using GLMakie
+using LinearAlgebra
 
-#struct Molecule
-#    atoms::Vector{String}
-#    positions::Matrix{Float64}
-#end
+# Atomtyper (Etanol: C2H5OH)
+atom_types = ["C", "C", "O", "H", "H", "H", "H", "H", "H"]
+positions = [
+    Point3f(0.0, 0.0, 0.0),
+    Point3f(1.5, 0.0, 0.0),
+    Point3f(2.1, 0.9, 0.0),
+    Point3f(-0.6, 0.9, 0.0),
+    Point3f(-0.6, -0.9, 0.0),
+    Point3f(0.0, 0.0, 1.0),
+    Point3f(1.5, 0.0, -1.0),
+    Point3f(2.1, -0.9, 0.0),
+    Point3f(2.7, 0.9, 0.0),
+]
 
-# === Ladda molekyl ===
-#@load "/Users/alicestenbeck/Downloads/processed_molecules.jld2" result
-#mol = result[1]
-mol_length = 10
-ghost_number = 50
+# --------------------------
+# Färger och radier
+atom_colors = Dict("H" => :white, "C" => :black, "O" => :red, "N" => :blue)
+atom_radii = Dict("H" => 0.2, "C" => 0.35, "O" => 0.4, "N" => 0.4)
 
-mol_atoms = rand(string.(collect("CHON")), mol_length) # e.g. ["C", "H", "O"] # length N
-mol_positions = randn(mol_length, 3) * 1.5             # e.g. N x 3
+# --------------------------
+# Hitta bindningar
+function find_bonds(positions; cutoff=1.2) # cutoff är max-avståndet för att rita en bindning.
+    bonds = Tuple{Int, Int}[] # Skapar en tom lista där varje element är ett par av atomindex (i, j).
+    for i in 1:length(positions)-1 # Loopa genom alla möjliga atompar utan att upprepa eller jämföra samma atom med sig själv.
+        for j in i+1:length(positions)
+            dist = norm(positions[i] - positions[j]) # Beräknar avstånd 
+            if dist ≤ cutoff # Om avståndet mellan atomerna är mindre än cutoff ska en bindning ritas 
+                push!(bonds, (i, j)) # lägg till paret i listan 
+            end
+        end
+    end
+    return bonds
+end
 
-ghost_atoms = rand(string.(collect("CHON")), ghost_number) # ["C", "C", "C", "C", "O"] # length M
-ghost_positions = randn(ghost_number, 3) * 3               # e.g. M x 3
+bonds = find_bonds(positions) # skickar in positions i funktionen och returnerar bonds, listan med atompar som ska ha en bindning mellan sig 
 
-# === Färger och radier ===
-atom_colors = Dict("H" => :white, "C" => :gray, "O" => :red, "N" => :blue, "F" => :lightblue)
+# === Extra pluspositioner i 3D ===
+plus_positions = [
+    Point3f(3.0, 0.5, 0.0),  # valfri plats där + ska synas
+    Point3f(2.5, 1.5, 0.0), # (point3 betyder att det ritas i en 3D illustration, inte att de ritas 3D)
+    Point3f(2.0, 1.5, 0.0),
+    Point3f(2.7, 2.0, 0.0),
+    Point3f(2.5, 0.5, 0.0),
+    
+]
 
-# === Konvertera till punkter ===
-positions = [Point3f(mol.positions[i, :]...) for i in 1:size(mol.positions, 1)]
-colors = [atom_colors[a] for a in mol.atoms]
+# --------------------------
+# Visualisering
+set_theme!(theme_dark())  
+fig = Figure(resolution = (800, 600)) # Skapar en makiefigur 
+ax = Axis3(fig[1, 1], aspect = :data) # Lägger till en 3D axel genom axis3
 
-# === Rita plotten ===
-fig = Figure(resolution=(600, 600))
-ax = Axis3(fig[1, 1], aspect=:data)
-scatter!(ax, positions, color=colors, markersize=20, marker=:circle)
+# Rita atomer
+for (i, pos) in enumerate(positions) # Loopar över varje atomposition. i är indexet och pos är xyz koordinaterna
+    atom = atom_types[i] # hämtar atomtypen 
+    color = atom_colors[atom] # hämtar rätt färg 
+    radius = atom_radii[atom] # hämtar radien 
+    mesh!(Sphere(pos, radius), color = color) # rita en 3D sfär 
+end
+
+# Rita bindningar
+for (i, j) in bonds # loopa över alla atompar som ska vara bundna 
+    lines!(Point3f[positions[i], positions[j]], color = :gray, linewidth = 2) # rita en linje mellan dem 
+end
+
+# Rita 2D plustecken
+for pos in plus_positions # loopa igenom alla + positioner 
+    scatter!(ax, [pos], marker = '+', color = :gray80, markersize = 25, # Här ser man att + ritas i 2D. Tex att + är ett texttecken och blir då i 2D. Scatter används även på platta objekt.  
+             transparency = true, fxaa = true)
+end
+
 fig
