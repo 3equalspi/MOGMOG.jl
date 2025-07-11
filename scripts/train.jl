@@ -1,6 +1,6 @@
 using MOGMOG
 
-using Flux
+using Flux, CUDA
 using LearningSchedules
 using Random
 using JLD2
@@ -32,16 +32,16 @@ mixture_components = 5
 vocab_size = length(vocab_dict)
 depth = 4
 heads = 4
-batchsize = 64
-nbatches = 10000
-nepochs = 10
+batchsize = 128
+nbatches = 1000
+nepochs = 20
 
 ENV["MLDATADEVICES_SILENCE_WARN_NO_GPU"] = "1"
 
 # Initialize model and optimizer
 model = MOGMOGModel(; embed_dim, mixture_components, vocab_size, depth, heads) |> gpu
 
-scheduler = burnin_learning_schedule(0.00005f0, 0.001f0, 1.01f0, 0.9998f0)
+scheduler = burnin_learning_schedule(0.00005f0, 0.001f0, 1.01f0, 0.9999f0)
 opt_state = Flux.setup(AdamW(scheduler.lr), model)
 
 # Training loop
@@ -54,10 +54,12 @@ for epoch in 1:nepochs
         batch_start = (i-1) * batchsize + 1
         batch_end = min(i * batchsize, length(shuffled))
         mols = shuffled[batch_start:batch_end]
-        batch = pad_and_batch(mols, vocab_dict; random_rigid=true)
+        batch = pad_and_batch(mols, vocab_dict; random_rigid=true) |> gpu
 
         loss_val, (grad,) = Flux.withgradient(model) do m
-            loss(m, batch...)
+            loss_atom_type, loss_position = losses(m, batch...)
+            i % 50 == 0 && println("Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4))")
+            loss_atom_type + loss_position
         end
 
         Flux.adjust!(opt_state, next_rate(scheduler))

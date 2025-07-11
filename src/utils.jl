@@ -5,11 +5,11 @@ end
 
 Base.length(mol::Molecule) = length(mol.atoms)
 
-centroid(X::AbstractArray{<:Number}) = mean()
+centered(X::AbstractArray{<:Number}) = X .- mean(X, dims=2)
 
 # apply random rigid transformation to a molecule
 # with translation standard deviation σ
-function apply_random_rigid(X::AbstractArray{T}, σ::T=zero(T)) where T<:Number
+function apply_random_rigid(X::AbstractArray{T}, σ::T=one(T)) where T<:Number
     @assert size(X, 1) == 3
 
     Q, _ = qr(randn!(similar(X, 3, 3)))
@@ -28,7 +28,7 @@ end
 export transform_molecule
 
 
-function pad_and_batch(molecules::Vector{Molecule}, vocab_dict, pad_token="STOP"; random_rigid=false)
+function pad_and_batch(molecules::Vector{Molecule}, vocab_dict, pad_token="STOP"; center=true, random_rigid=true)
     max_len = maximum(length, molecules, init=0) + 1
     B = length(molecules)
     PAD = vocab_dict[pad_token]
@@ -47,9 +47,8 @@ function pad_and_batch(molecules::Vector{Molecule}, vocab_dict, pad_token="STOP"
         atom_type_mask[1:L, i] .= 1.0
     end
 
-    if random_rigid
-        positions = apply_random_rigid(positions)
-    end
+    center && (positions = centered(positions))
+    random_rigid && (positions = apply_random_rigid(positions))
 
     return atom_types, positions, atom_type_mask, coordinate_mask
 end

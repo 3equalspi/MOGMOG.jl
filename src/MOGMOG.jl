@@ -1,10 +1,10 @@
 module MOGMOG
 
+using ChainRulesCore
 using ConcreteStructs
 using Einops
 using Flux
 using LinearAlgebra
-using Manifolds
 using NNlib
 using Onion
 using Random
@@ -21,7 +21,7 @@ include("model.jl")
 export MOGMOGModel
 
 include("loss.jl")
-export loss
+export losses
 
 include("utils.jl")
 export Molecule
