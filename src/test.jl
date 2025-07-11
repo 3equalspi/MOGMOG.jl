@@ -83,7 +83,7 @@ for epoch in 1:nepochs
 end
 
 # Save loss plot
-using Plots
+using Plots: plot
 plot(all_losses, title="Training Loss", xlabel="Batch", ylabel="Loss")
 savefig("training_loss.pdf")
 
