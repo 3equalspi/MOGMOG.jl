@@ -25,11 +25,11 @@ PAD = atom_dict["STOP"]
 
 # Hyperparameters
 embed_dim = 64
-n_components = 5
+n_components = 50
 vocab_size = length(atom_dict)
 depth = 4
 max_len = 32
-batchsize = 4
+batchsize = 8
 nbatches = 1000
 nepochs = 100
 
@@ -79,7 +79,7 @@ for epoch in 1:nepochs
 
         println("Batch $i, loss = $(round(loss_val, digits=4))")
     end
-    serialize("model-$epoch.jls", model)
+    #serialize("model-$epoch.jls", model)
 end
 
 # Save loss plot

@@ -1,4 +1,4 @@
-using GLMakie, LinearAlgebra, Flux, JLD2
+using GLMakie, LinearAlgebra, Flux, JLD2, MOGMOG
 
 # === Modellstrukturfiler ===
 include("/Users/alicestenbeck/dev/MOGMOG.jl/loss.jl")
