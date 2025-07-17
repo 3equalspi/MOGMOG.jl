@@ -8,6 +8,9 @@ struct AtomTypeHead
     linear_logits::Dense
 end
 
+struct Climbhead
+    linear_logits::Dense
+end
 #h[:,1,:]
 
 function MoGAxisHead(embed_dim::Int, n_components::Int)
@@ -33,4 +36,13 @@ end
 
 function (head::AtomTypeHead)(embeddings::AbstractArray) 
     return head.linear_logits(embeddings)
+end
+
+function ClimbHead(embed_dim::Int, max_climb::Int)
+    # Predict logits over climb values: 0, 1, ..., max_climb
+    return ClimbHead(Dense(embed_dim, max_climb + 1))  # discrete logits
+end
+
+function (head::ClimbHead)(embeddings::AbstractMatrix)
+    return head.linear_climb(embeddings)  # size: (max_climb+1, L)
 end

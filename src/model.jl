@@ -4,6 +4,7 @@ struct MOGMOGModel
     body::Vector{DART}    # Transformer blocks
     mog_head::MoGAxisHead
     atom_head::AtomTypeHead
+    climb_head::ClimbHead
 end
 
 Flux.@layer MOGMOGModel
@@ -33,6 +34,7 @@ function (mmm::MOGMOGModel)(positions::AbstractArray{<:AbstractFloat}, atom_type
     # Output heads
     μ, σ, logw = mmm.mog_head(x[:,2:4,:,:])
     logits = mmm.atom_head(x[:,1:1,:,:])
+    climb_logits = mmm.climb_head(x[:,5:5,:,:])
 
-    return μ, σ, logw, logits
+    return μ, σ, logw, logits, climb_logits
 end

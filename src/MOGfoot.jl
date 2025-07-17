@@ -36,5 +36,5 @@ function (foot::MOGfoot)(atom_types::AbstractArray{Int}, coordinates::AbstractAr
     with_next_x = with_next_atom + foot.next_x_embed(coordinates[1:1, 2:L, :])
     with_next_y = with_next_x + foot.next_y_embed(coordinates[2:2, 2:L, :])
     concatenated = vcat(atom_embedding, with_next_atom, with_next_x, with_next_y) # 4D x L x B
-    return rearrange(concatenated, einops"(d k) l b -> d k l b", k=4)
+    return rearrange(concatenated, einops"(d k) l b -> d k l b", k=5)
 end
