@@ -18,8 +18,9 @@ function MOGMOGModel(embed_dim::Int, n_components::Int, vocab_size::Int; depth::
     # Output heads
     mog_head = MoGAxisHead(embed_dim, n_components)
     atom_head = AtomTypeHead(embed_dim, vocab_size)
+    climb_head = ClimbHead(embed_dim, 10)  # Example max_climb value
 
-    return MOGMOGModel(foot, body, mog_head, atom_head)
+    return MOGMOGModel(foot, body, mog_head, atom_head, climb_head)
 end
 
 function (mmm::MOGMOGModel)(positions::AbstractArray{<:AbstractFloat}, atom_types::AbstractArray{Int})
