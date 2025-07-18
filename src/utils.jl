@@ -25,10 +25,7 @@ function apply_random_rigid(X::AbstractArray{T}, σ::T=one(T)) where T<:Number
     return Y
 end
 
-export transform_molecule
-
-
-function pad_and_batch(molecules::Vector{Molecule}, vocab_dict, pad_token="STOP"; center=true, random_rigid=true)
+function pad_and_batch(molecules::Vector{Molecule}, vocab_dict, pad_token="STOP"; center=false, random_rigid=false)
     max_len = maximum(length, molecules, init=0) + 1
     B = length(molecules)
     PAD = vocab_dict[pad_token]

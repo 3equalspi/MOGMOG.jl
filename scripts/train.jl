@@ -17,24 +17,24 @@ function get_molecule(data, i)
     features = data[i].graphs.node_data.features
     atom_types = [elements[Int(i)].symbol for i in features[6,:]]
     positions = features[14:16,:]
-    return Molecule(atom_types, positions)
+    i = (:)#findall(!=("H"), atom_types)
+    return Molecule(atom_types[i], positions[:,i])
 end
-
 data = [get_molecule(dataset, i) for i in 1:length(dataset)]
 
-unique_atoms = sort(unique(vcat((mol.atoms for mol in data)...)))
-vocabulary = [unique_atoms; "STOP"]
+unique_atoms = unique(vcat((mol.atoms for mol in data)...))
+vocabulary = sort([unique_atoms; "H"; "STOP"])
 vocab_dict = Dict(name => i for (i, name) in enumerate(vocabulary))
 
 # Hyperparameters
 embed_dim = 64
-mixture_components = 5
+mixture_components = 4
 vocab_size = length(vocab_dict)
 depth = 4
-heads = 4
-batchsize = 128
+heads = 8
+batchsize = 64
 nbatches = 1000
-nepochs = 20
+nepochs = 50
 
 ENV["MLDATADEVICES_SILENCE_WARN_NO_GPU"] = "1"
 
@@ -58,7 +58,8 @@ for epoch in 1:nepochs
 
         loss_val, (grad,) = Flux.withgradient(model) do m
             loss_atom_type, loss_position = losses(m, batch...)
-            i % 50 == 0 && println("Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4))")
+            i % 50 == 0 && Flux.ChainRulesCore.@ignore_derivatives println(
+                "Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4)), lr = $(round(scheduler.lr, digits=6))")
             loss_atom_type + loss_position
         end
 
@@ -66,7 +67,6 @@ for epoch in 1:nepochs
         Flux.update!(opt_state, model, grad)
 
         push!(all_losses, loss_val)
-        println("Batch $i, loss = $(round(loss_val, digits=4)), lr = $(round(scheduler.lr, digits=6))")
     end
 
     plot(all_losses, title="Training Loss", xlabel="Batch", ylabel="Loss")

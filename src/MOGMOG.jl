@@ -5,6 +5,7 @@ using ConcreteStructs
 using Einops
 using Flux
 using LinearAlgebra
+using LogitSamplers
 using NNlib
 using Onion
 using Random

@@ -8,7 +8,7 @@ end
 
 Flux.@layer MOGMOGModel
 
-function MOGMOGModel(; embed_dim::Int, mixture_components::Int, vocab_size::Int, depth::Int, heads::Int)
+function MOGMOGModel(; embed_dim=128, mixture_components=16, vocab_size=6, depth=4, heads=4)
     # Input encoder
     encoder = MOGencoder(embed_dim, vocab_size)
 
@@ -21,6 +21,8 @@ function MOGMOGModel(; embed_dim::Int, mixture_components::Int, vocab_size::Int,
 
     return MOGMOGModel(encoder, darts, mog_decoder, atom_decoder)
 end
+
+@debug "test"
 
 function (mmm::MOGMOGModel)(atom_types::AbstractArray{Int}, positions::AbstractArray{<:AbstractFloat})
     h = mmm.encoder(atom_types, positions) # D x L x B

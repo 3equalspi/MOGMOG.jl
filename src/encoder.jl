@@ -8,15 +8,27 @@ end
 
 function MOGencoder(embed_dim::Int, vocab_size::Int)
     MOGencoder(
-        Chain(RandomFourierFeatures(3 => embed_dim, 0.1f0), Dense(embed_dim => embed_dim, swish)), # current coordinates
+        Chain(RandomFourierFeatures(3 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # current coordinates
         Embedding(vocab_size => embed_dim), # atom
         Chain(RandomFourierFeatures(1 => embed_dim, 0.5f0), Dense(embed_dim => embed_dim, swish)), # position
-        Chain(RandomFourierFeatures(1 => embed_dim, 0.1f0), Dense(embed_dim => embed_dim, swish)), # next x
-        Chain(RandomFourierFeatures(1 => embed_dim, 0.1f0), Dense(embed_dim => embed_dim, swish)), # next y
+        Chain(RandomFourierFeatures(1 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # next x
+        Chain(RandomFourierFeatures(1 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # next y
     )
 end
 
-@non_differentiable as_dense_on_device(x, array::DenseArray) = similar(array, size(x)) .= x
+#=function MOGencoder(embed_dim::Int, vocab_size::Int)
+    half_dim = embed_dim ÷ 2
+    MOGencoder(
+        Chain(RandomFourierFeatures(3 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # current coordinates
+        Embedding(vocab_size => half_dim), # atom
+        Chain(RandomFourierFeatures(1 => half_dim, 0.5f0), Dense(half_dim => embed_dim, swish)), # position
+        Chain(RandomFourierFeatures(1 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # next x
+        Chain(RandomFourierFeatures(1 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # next y
+    )
+end=#
+
+as_dense_on_device(x, array::DenseArray) = similar(array, size(x)) .= x
+@non_differentiable as_dense_on_device(::Any...)
 
 # atom types: L x B
 # [1, 5, 3, 7, 8]
