@@ -8,8 +8,9 @@ struct AtomTypeHead
     linear_logits::Dense
 end
 
-struct Climbhead
-    linear_logits::Dense
+struct ClimbHead
+    #linear_logits::Dense
+    linear_climb::Dense
 end
 #h[:,1,:]
 
