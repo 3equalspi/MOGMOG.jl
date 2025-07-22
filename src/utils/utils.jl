@@ -1,4 +1,3 @@
-include("smiles.jl")
 include("climbs.jl")
 
 centered(X::AbstractArray{<:Number}) = X .- mean(X, dims=2)

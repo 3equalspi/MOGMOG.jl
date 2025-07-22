@@ -43,7 +43,7 @@ ENV["MLDATADEVICES_SILENCE_WARN_NO_GPU"] = "1"
 # Initialize model and optimizer
 model = MOGMOGModel(; embed_dim, mixture_components, vocab_size, depth, heads) |> gpu;
 
-scheduler = linear_decay_schedule(0.00003f0, 0.0f0, 3000)
+scheduler = burnin_learning_schedule(0.00003f0, 0.001f0, 1.01f0, 0.99995f0)
 opt_state = Flux.setup(Muon(opt=AdamW(scheduler.lr)), model);
 
 # Training loop
@@ -60,8 +60,9 @@ for epoch in 1:nepochs
 
         loss_val, (grad,) = Flux.withgradient(model) do m
             loss_atom_type, loss_position, loss_climb = losses(m, batch)
+            loss_climb *= 2
             i % 50 == 0 && Flux.ChainRulesCore.@ignore_derivatives println(
-                "Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4)), lr = $(round(scheduler.lr, digits=6))")
+                "Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4)), loss_climb = $(round(loss_climb, digits=4)), lr = $(round(scheduler.lr, digits=6))")
             loss_atom_type + loss_position + loss_climb
         end
 
@@ -75,6 +76,6 @@ for epoch in 1:nepochs
     savefig("training_loss.pdf")
     
     let model = model |> cpu
-        @save "experiments/deep/mogmodel_checkpoint_$(epoch).jld2" model all_losses
+        @save "experiments/climb/mogmodel_checkpoint_$(epoch).jld2" model all_losses
     end
 end

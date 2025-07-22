@@ -3,6 +3,7 @@
 # If there is one atom inside the ()= 1
 # If there are more than one inside the (), then the last atom will recieve a climb of the amount of atoms in that chain but the other ones will have zero (except if there are more sidechains in that sidechain).
 # The last atom in the molecule always get a climb 0 
+clean_smiles(smiles::String) = filter(c -> (isletter(c) && c != 'H') || c in ('(', ')'), uppercase(smiles))
 
 function smiles_to_climbs(smiles::String)
     smiles = clean_smiles(smiles)

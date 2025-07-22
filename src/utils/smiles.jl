@@ -1,1 +1,0 @@
-clean_smiles(smiles::String) = filter(c -> (isletter(c) && c != 'H') || c in ('(', ')'), uppercase(smiles))
