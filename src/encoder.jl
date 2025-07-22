@@ -1,52 +1,45 @@
 @concrete struct MOGencoder
     current_coord_embed
+    current_climb_embed
     atom_embed
     index_embed
     next_x_embed
     next_y_embed
+    next_z_embed
+    token_type_term
 end
 
 function MOGencoder(embed_dim::Int, vocab_size::Int)
     MOGencoder(
-        Chain(RandomFourierFeatures(3 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # current coordinates
+        Chain(RandomFourierFeatures(3 => 32, 0.2f0), Dense(32 => embed_dim)), # current coordinates
+        Chain(RandomFourierFeatures(1 => 32, 0.2f0), Dense(32 => embed_dim)), # climb
         Embedding(vocab_size => embed_dim), # atom
-        Chain(RandomFourierFeatures(1 => embed_dim, 0.5f0), Dense(embed_dim => embed_dim, swish)), # position
-        Chain(RandomFourierFeatures(1 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # next x
-        Chain(RandomFourierFeatures(1 => embed_dim, 0.2f0), Dense(embed_dim => embed_dim, swish)), # next y
+        Chain(RandomFourierFeatures(1 => 32, 0.3f0), Dense(32 => embed_dim)), # position
+        Chain(RandomFourierFeatures(1 => 32, 0.2f0), Dense(32 => embed_dim)), # next x
+        Chain(RandomFourierFeatures(1 => 32, 0.2f0), Dense(32 => embed_dim)), # next y
+        Chain(RandomFourierFeatures(1 => 32, 0.2f0), Dense(32 => embed_dim)), # next z
+        randn(Float32, embed_dim, 5) .* 0.01f0  # Learnable D x 5 token type embeddings
     )
 end
 
-#=function MOGencoder(embed_dim::Int, vocab_size::Int)
-    half_dim = embed_dim ÷ 2
-    MOGencoder(
-        Chain(RandomFourierFeatures(3 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # current coordinates
-        Embedding(vocab_size => half_dim), # atom
-        Chain(RandomFourierFeatures(1 => half_dim, 0.5f0), Dense(half_dim => embed_dim, swish)), # position
-        Chain(RandomFourierFeatures(1 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # next x
-        Chain(RandomFourierFeatures(1 => half_dim, 0.1f0), Dense(half_dim => embed_dim, swish)), # next y
-    )
-end=#
-
-as_dense_on_device(x, array::DenseArray) = similar(array, size(x)) .= x
-@non_differentiable as_dense_on_device(::Any...)
-
-# atom types: L x B
-# [1, 5, 3, 7, 8]
-# coordinates: 3 x L x B
-# 3×5 Matrix{Float64}:
-#  0.163998   0.324916   0.866443  0.0771369  0.0660904
-#  0.306506   0.0206321  0.417595  0.76132    0.203126
-#  0.0464874  0.290774   0.102366  0.206444   0.338374
-function (foot::MOGencoder)(atom_types::AbstractArray{Int}, positions::AbstractArray{<:AbstractFloat})
+function (encoder::MOGencoder)(
+    atom_types::AbstractArray{Int},
+    positions::AbstractArray{<:AbstractFloat},
+    climbs::AbstractArray{Int},
+)
     L = size(atom_types, 1)
     # D x L x B
-    atom_embedding = foot.atom_embed(atom_types[1:L-1, :]) .+
-        foot.current_coord_embed(positions[:, 1:L-1, :]) .+
-        foot.index_embed(as_dense_on_device((1:L-1)', positions))
-    # D x L x B --> D x 4 x L x B
-    with_next_atom = atom_embedding + foot.atom_embed(atom_types[2:L, :])
-    with_next_x = with_next_atom + foot.next_x_embed(positions[1:1, 2:L, :])
-    with_next_y = with_next_x + foot.next_y_embed(positions[2:2, 2:L, :])
-    concatenated = vcat(atom_embedding, with_next_atom, with_next_x, with_next_y) # 4D x L x B
-    return rearrange(concatenated, ((:d, :k), :l, :b) --> (:d, :k, :l, :b), k=4)
+    atom_embedding = encoder.atom_embed(atom_types[1:L-1, :]) .+
+        encoder.current_coord_embed(positions[:, 1:L-1, :]) .+
+        encoder.current_climb_embed(rearrange(Float32.(climbs[1:L-1, :]), (..) --> (1, ..))) .+
+        encoder.index_embed(as_dense_on_device((1:L-1)', positions))
+    # D x L x B --> D x 5 x L x B
+    with_next_atom = atom_embedding + encoder.atom_embed(atom_types[2:L, :])
+    with_next_x = with_next_atom + encoder.next_x_embed(positions[1:1, 2:L, :])
+    with_next_y = with_next_x + encoder.next_y_embed(positions[2:2, 2:L, :])
+    with_next_z = with_next_y + encoder.next_z_embed(positions[3:3, 2:L, :])
+    concatenated = vcat(atom_embedding, with_next_atom, with_next_x, with_next_y, with_next_z) # 5D x L x B
+    tokens = rearrange(concatenated, ((:d, :k), :l, :b) --> (:d, :k, :l, :b), k=5) # D x 5 x L x B
+    tokens = tokens .+ encoder.token_type_term
+    return tokens
 end

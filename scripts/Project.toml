@@ -1,7 +1,9 @@
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CannotWaitForTheseOptimisers = "16124dda-d9fe-413b-a880-e3f4df3aa341"
 DLProteinFormats = "df93d313-1126-4eb6-ac29-b325d5898587"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 LearningSchedules = "7e85a9e7-c65d-495e-8ec0-baa06f07ebbf"
 MLDatasets = "eb30cadb-4394-5ae3-aed4-317e484a6458"

@@ -14,7 +14,7 @@ end
 
 function (mog::MOG)(axis_embeddings::AbstractArray)
     μ = mog.linear_μ(axis_embeddings)
-    σ = mog.linear_σ(axis_embeddings) .+ 0.01f0
+    σ = mog.linear_σ(axis_embeddings) .+ 0.003f0
     logw = mog.linear_logw(axis_embeddings)
     logw = logw .- logsumexp(logw; dims=1) # normalize weights to sum to 1
     return μ, σ, logw

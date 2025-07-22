@@ -12,6 +12,11 @@ using Random
 using RandomFeatureMaps
 using Statistics
 
+include("utils/utils.jl")
+export Molecule
+export apply_random_rigid
+export pad_and_batch
+
 include("encoder.jl")
 export MOGencoder
 
@@ -23,11 +28,6 @@ export MOGMOGModel
 
 include("loss.jl")
 export losses
-
-include("utils.jl")
-export Molecule
-export apply_random_rigid
-export pad_and_batch
 
 include("inference.jl")
 
