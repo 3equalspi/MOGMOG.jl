@@ -24,18 +24,17 @@ function sample_next(model::MOGMOGModel, atom_types, positions, climbs)
     new_atom_types = [atom_types; 1]
     new_climbs = [climbs; 0]
     from = first.(climbs_to_pairs(new_climbs[2:end]))[end] #<- sus
-    @show from
     new_positions = [positions;; selectdim(positions, 2, from)]
     atom_type_logits, = model(new_atom_types, new_positions, new_climbs)
     new_atom_types[end, :] .= atom_type_sample(atom_type_logits[:, end, :])
     _, μ_x, σ_x, logw_x = model(new_atom_types, new_positions, new_climbs)
-    new_positions[1, end, :] .+= nucleus_mog_sample(μ_x[:,1,end,1], σ_x[:,1,end,1], logw_x[:,1,end,1], p = 0.9, n = 400)
+    new_positions[1, end, :] .+= nucleus_mog_sample(μ_x[:,1,end,1], σ_x[:,1,end,1], logw_x[:,1,end,1], p = 0.85, n = 400)
     _, μ_y, σ_y, logw_y = model(new_atom_types, new_positions, new_climbs)
-    new_positions[2, end, :] .+= nucleus_mog_sample(μ_y[:,2,end,1], σ_y[:,2,end,1], logw_y[:,2,end,1], p = 0.9, n = 400)
+    new_positions[2, end, :] .+= nucleus_mog_sample(μ_y[:,2,end,1], σ_y[:,2,end,1], logw_y[:,2,end,1], p = 0.85, n = 400)
     _, μ_z, σ_z, logw_z = model(new_atom_types, new_positions, new_climbs)
-    new_positions[3, end, :] .+= nucleus_mog_sample(μ_z[:,3,end,1], σ_z[:,3,end,1], logw_z[:,3,end,1], p = 0.9, n = 400)
+    new_positions[3, end, :] .+= nucleus_mog_sample(μ_z[:,3,end,1], σ_z[:,3,end,1], logw_z[:,3,end,1], p = 0.85, n = 400)
     _, _, _, _, climb_logits = model(new_atom_types, new_positions, new_climbs)
-    new_climbs[end, :] .= logitsample(Top_p(0.999f0)(climb_logits[:, end, 1]), dims=1) .- 1
+    new_climbs[end, :] .= logitsample(Top_p(0.95f0)(climb_logits[:, end, 1]), dims=1) .- 1
     return new_atom_types, new_positions, new_climbs
 end
 
