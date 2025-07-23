@@ -1,6 +1,7 @@
 include("climbs.jl")
 
 centered(X::AbstractArray{<:Number}) = X .- mean(X, dims=2)
+first_centered(X::AbstractArray{<:Number}) = X .- X[:,1,:]
 
 # apply random rigid transformation to a molecule
 # with translation standard deviation σ
@@ -21,7 +22,7 @@ function apply_random_rigid(X::AbstractArray{T}, σ::T=one(T)) where T<:Number
 end
 
 
-function pad_and_batch(molecules, vocab_dict, pad_token="STOP"; center=false, random_rigid=false)
+function pad_and_batch(molecules, vocab_dict, pad_token="STOP"; center=false, random_rigid=false, first_center=true)
     max_len = maximum(m -> length(m.atom_types), molecules, init=0) + 1
     B = length(molecules)
     PAD = vocab_dict[pad_token]
@@ -37,15 +38,19 @@ function pad_and_batch(molecules, vocab_dict, pad_token="STOP"; center=false, ra
         for j in 1:L
             atom_types[j, i] = get(vocab_dict, mol.atom_types[j], PAD)
         end
+        
         positions[:, 1:L, i] = mol.positions[:, 1:L]
+
+        #This was being done to the whole batch, AFTER THE DISPLACEMENTS WERE CALCULATED!
+        center && (positions[:, 1:L, i] = centered(positions[:, 1:L, i]))
+        random_rigid && (positions[:, 1:L, i] = apply_random_rigid(positions[:, 1:L, i]))
+        first_center && (positions[:, 1:L, i] = first_centered(positions[:, 1:L, i]))
+
         displacements[:, 1:L-1, i] = mol.positions[:, 2:end] .- mol.positions[:, first.(mol.edges)]
-        climbs[1:L-1, i] = mol.climbs
+        climbs[1:L, i] = mol.climbs #<-fix here
         coord_mask[1:L-1, i] .= 1
         atom_mask[1:L, i] .= 1
     end
-
-    center && (positions = centered(positions))
-    random_rigid && (positions = apply_random_rigid(positions))
 
     return (; atom_types, positions, displacements, climbs, atom_mask, coord_mask)
 end
