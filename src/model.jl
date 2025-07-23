@@ -14,7 +14,7 @@ function MOGMOGModel(;
     embed_dim=128, mixture_components=16, vocab_size=6, depth=4, heads=4, max_climb=10
 )
     # Input encoder
-    encoder = MOGencoder(embed_dim, vocab_size)
+    encoder = MOGencoder(embed_dim, vocab_size, max_climb + 1)
 
     # Doubly Auto-Regressive Transformer stack
     darts = ntuple(i -> DART(TransformerBlock(embed_dim, heads)), depth)
