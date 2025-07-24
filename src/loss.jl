@@ -6,7 +6,7 @@ end
 
 function losses(model, batch)
     atom_logits, μ, σ, logw, climb_logits = model(
-        batch.atom_types, batch.positions, batch.climbs)
+        batch.atom_types, batch.positions, batch.climbs, batch.anchors, batch.indexes)
     atom_onehot = Flux.onehotbatch(batch.atom_types[2:end, :], 1:size(atom_logits, 1))
     atom_masked_mean(p) = sum(p .* rearrange(batch.atom_mask, (..) --> (1, ..))) / sum(batch.atom_mask)
     loss_atom_type = Flux.logitcrossentropy(atom_logits, atom_onehot; agg=atom_masked_mean)

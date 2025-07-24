@@ -18,10 +18,10 @@ function MOGencoder(embed_dim::Int, vocab_size::Int, max_climb::Int; rff_dim=128
         Embedding(max_climb => embed_dim), # climb
         Embedding(vocab_size => embed_dim), # atom
         Embedding(vocab_size => embed_dim), # nextatom
-        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim, bias=false)), # position
-        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim, bias=false)), # next x
-        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim, bias=false)), # next y
-        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim, bias=false)), # next z
+        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim)), # position
+        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim)), # next x
+        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim)), # next y
+        Chain(RandomFourierFeatures(1 => rff_dim, 1.0f0), Dense(rff_dim => embed_dim)), # next z
         randn(Float32, embed_dim, 5, 1, 1) .* 0.1f0  # Learnable D x 5 token type embeddings
     )
 end
