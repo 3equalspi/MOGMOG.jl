@@ -1,4 +1,4 @@
-atom_type_sample(logits) = logitsample(Top_p(0.95f0)(logits |> vec), dims=1)
+atom_type_sample(logits) = logitsample(Top_p(0.99f0)(logits |> vec), dims=1)
 
 function mog_sample(μ, σ, logw)
     i = logitsample(logw, dims=1)
@@ -19,50 +19,6 @@ function nucleus_mog_sample(μ, σ, logw; p = 0.95, n = 200)
     return nucleus_sample(samps, probs, p = p) 
 end
 
-#=
-function sample_next(model::MOGMOGModel, atom_types, positions, climbs)
-    #@show atom_types, positions, climbs
-    new_atom_types = [atom_types; 1]
-    new_climbs = [climbs; 0]
-    from = first.(climbs_to_pairs(new_climbs[2:end]))[end] #<- sus
-    @show size(positions), from
-    @show selectdim(positions, 2, from)
-    new_positions = [positions;; selectdim(positions, 2, from)]
-    @show size(new_positions)
-    atom_type_logits, = model(new_atom_types, new_positions, new_climbs)
-    new_atom_types[end, :] .= atom_type_sample(atom_type_logits[:, end, :])
-    _, μ_x, σ_x, logw_x = model(new_atom_types, new_positions, new_climbs)
-    new_positions[1, end, :] .+= nucleus_mog_sample(μ_x[:,1,end,1], σ_x[:,1,end,1], logw_x[:,1,end,1], p = 0.15, n = 400)
-    _, μ_y, σ_y, logw_y = model(new_atom_types, new_positions, new_climbs)
-    new_positions[2, end, :] .+= nucleus_mog_sample(μ_y[:,2,end,1], σ_y[:,2,end,1], logw_y[:,2,end,1], p = 0.15, n = 400)
-    _, μ_z, σ_z, logw_z = model(new_atom_types, new_positions, new_climbs)
-    new_positions[3, end, :] .+= nucleus_mog_sample(μ_z[:,3,end,1], σ_z[:,3,end,1], logw_z[:,3,end,1], p = 0.15, n = 400)
-    _, _, _, _, climb_logits = model(new_atom_types, new_positions, new_climbs)
-    new_climbs[end, :] .= logitsample(Top_p(0.95f0)(climb_logits[:, end, 1]), dims=1) .- 1
-    @show size(new_positions)
-    return new_atom_types, new_positions, new_climbs
-end
-
-function sample(
-    n::Integer,
-    model::MOGMOGModel,
-    atom_types::AbstractVector{<:Integer}=[1],
-    #positions::AbstractMatrix{<:AbstractFloat}=fill!(similar(atom_types, Float32, 3, size(atom_types)...), 0),
-    positions::AbstractMatrix{<:AbstractFloat}=rand(Float32, 3, size(atom_types)...),
-    climbs::AbstractVector{<:Integer}=Int[0],
-)
-    for i in 1:n
-        atom_types, positions, climbs = sample_next(model, atom_types, positions, climbs)
-        if last(atom_types) == 6
-            display(climbs)
-            return atom_types[1:end-1], positions[:,1:end-1]
-        end
-    end
-    return atom_types, positions
-end
-=#
-
-
 function sample_next(model::MOGMOGModel, atom_types, positions, climbs)
     #@show atom_types, positions, climbs
     new_atom_types = [atom_types; 1]
@@ -70,20 +26,29 @@ function sample_next(model::MOGMOGModel, atom_types, positions, climbs)
     edges = climbs_to_pairs(new_climbs[2:end])
     anchors = first.(edges)
     indexes = collect(1:length(anchors))
+    
     from = anchors[end] #<- sus
     new_positions = [positions;; selectdim(positions, 2, from)]
-    atom_type_logits, = model(new_atom_types, new_positions, new_climbs, anchors, indexes)
-    new_atom_types[end, :] .= atom_type_sample(atom_type_logits[:, end, :])
-    _, μ_x, σ_x, logw_x = model(new_atom_types, new_positions, new_climbs, anchors, indexes)
+
+    displacements = new_positions[:,2:end,:] .- new_positions[:,anchors]
+    atom_type_logits, = model(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+    #atom_type_logits[6,:] .= -Inf
+    new_atom_types[end, :] .= atom_type_sample(atom_type_logits[:, end, 1])
+    _, μ_x, σ_x, logw_x = model(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
     new_positions[1, end, :] .+= nucleus_mog_sample(μ_x[:,1,end,1], σ_x[:,1,end,1], logw_x[:,1,end,1], p = 0.8, n = 5000)
-    _, μ_y, σ_y, logw_y = model(new_atom_types, new_positions, new_climbs, anchors, indexes)
+    displacements = new_positions[:,2:end,:] .- new_positions[:,anchors]
+    _, μ_y, σ_y, logw_y = model(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
     new_positions[2, end, :] .+= nucleus_mog_sample(μ_y[:,2,end,1], σ_y[:,2,end,1], logw_y[:,2,end,1], p = 0.8, n = 5000)
-    _, μ_z, σ_z, logw_z = model(new_atom_types, new_positions, new_climbs, anchors, indexes)
+    displacements = new_positions[:,2:end,:] .- new_positions[:,anchors]
+    _, μ_z, σ_z, logw_z = model(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
     new_positions[3, end, :] .+= nucleus_mog_sample(μ_z[:,3,end,1], σ_z[:,3,end,1], logw_z[:,3,end,1], p = 0.8, n = 5000)
-    _, _, _, _, climb_logits = model(new_atom_types, new_positions, new_climbs, anchors, indexes)
-    new_climbs[end, :] .= logitsample(Top_p(0.95f0)(climb_logits[:, end, 1]), dims=1) .- 1
+    displacements = new_positions[:,2:end,:] .- new_positions[:,anchors]
+    _, _, _, _, climb_logits = model(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+    new_climbs[end, :] .= logitsample(Top_p(0.99f0)(climb_logits[:, end, 1]), dims=1) .- 1
     return new_atom_types, new_positions, new_climbs
 end
+
+
 
 function sample(
     n::Integer,
@@ -104,8 +69,41 @@ end
 
 
 
+#= For manual stepping:
+atom_types = ones(Int, 1)
+positions = rand(Float32, 3, size(atom_types)...)
+climbs = zeros(Int, size(atom_types)...)
 
+new_atom_types = [atom_types; 1]
+new_climbs = [climbs; 0]
+edges = MOGMOG.climbs_to_pairs(new_climbs[2:end])
+anchors = first.(edges)
+indexes = collect(1:length(anchors))
+from = anchors[end] #<- sus
+new_positions = [positions;; selectdim(positions, 2, from)]
 
+displacements = new_positions[:,anchors] .- new_positions[:,1:end-1,:]
+
+atom_type_logits, = cpumodel(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+new_atom_types[end, :] .= MOGMOG.atom_type_sample(atom_type_logits[:, end, 1])
+_, μ_x, σ_x, logw_x = cpumodel(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+new_positions[1, end, :] .+= MOGMOG.nucleus_mog_sample(μ_x[:,1,end,1], σ_x[:,1,end,1], logw_x[:,1,end,1], p = 0.8, n = 5000)
+displacements = new_positions[:,anchors] .- new_positions[:,2:end,:]
+_, μ_y, σ_y, logw_y = cpumodel(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+new_positions[2, end, :] .+= MOGMOG.nucleus_mog_sample(μ_y[:,2,end,1], σ_y[:,2,end,1], logw_y[:,2,end,1], p = 0.8, n = 5000)
+displacements = new_positions[:,anchors] .- new_positions[:,1:end-1,:]
+_, μ_z, σ_z, logw_z = cpumodel(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+new_positions[3, end, :] .+= MOGMOG.nucleus_mog_sample(μ_z[:,3,end,1], σ_z[:,3,end,1], logw_z[:,3,end,1], p = 0.8, n = 5000)
+displacements = new_positions[:,anchors] .- new_positions[:,1:end-1,:]
+
+_, _, _, _, climb_logits = cpumodel(new_atom_types, new_positions, new_climbs, anchors, indexes, displacements)
+new_climbs[end, :] .= MOGMOG.logitsample(MOGMOG.Top_p(0.95f0)(climb_logits[:, end, 1]), dims=1) .- 1
+
+atom_types, positions, climbs = new_atom_types, new_positions, new_climbs
+
+μ_z .- μ_x
+
+=#
 
 
 

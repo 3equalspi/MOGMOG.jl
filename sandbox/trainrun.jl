@@ -1,9 +1,10 @@
 using Pkg
 Pkg.activate(".")
 using Revise
+#Pkg.add(["Flux", "LearningSchedules", "Random", "JLD2", "Serialization", "PeriodicTable", "Plots", "CannotWaitForTheseOptimisers", "Einops", "CUDA", "cuDNN"])
 Pkg.develop(path="../")
 
-#Pkg.add(["Flux", "LearningSchedules", "Random", "JLD2", "Serialization", "PeriodicTable", "Plots", "CannotWaitForTheseOptimisers"])
+
 
 using MOGMOG
 
@@ -15,6 +16,11 @@ using Serialization
 using PeriodicTable
 using Plots
 using CannotWaitForTheseOptimisers
+
+GPUnum = 0
+ENV["CUDA_VISIBLE_DEVICES"] = GPUnum
+
+using CUDA
 
 Random.seed!(0)
 
@@ -36,21 +42,13 @@ vocabulary = sort([unique_atoms; "H"; "STOP"])
 vocab_dict = Dict(name => i for (i, name) in enumerate(vocabulary))
 reverse_vocab_dict = Dict(i => name for (i, name) in enumerate(vocabulary))
 
-# Hyperparameters
-embed_dim = 256
-mixture_components = 32
-vocab_size = length(vocab_dict)
-depth = 5
-heads = 8
-batchsize = 8
-nbatches = 10000
-nepochs = 100
 
-ENV["MLDATADEVICES_SILENCE_WARN_NO_GPU"] = "1"
-
-# Initialize model and optimizer
-model = MOGMOGModel(; embed_dim, mixture_components, vocab_size, depth, heads) |> gpu;
-
+#=
+function sdpa(xq::AbstractArray{T}, xk::AbstractArray{T}, xv::AbstractArray{T}, mask::AbstractArray{T, 3}) where T
+    A = softmax(batched_mul(batched_transpose(xk), xq) / sqrt(T(size(xq, 1))) .+ mask, dims=1)
+    return batched_mul(xv, A)
+end
+=#
 @eval MOGMOG.Onion begin
     function (dart::DART)(x::AbstractArray; mask=:causal, rope=nothing)
         h = rearrange(x, (:d, :K, :L, ..) --> (:d, (:K, :L), ..))
@@ -67,13 +65,30 @@ model = MOGMOGModel(; embed_dim, mixture_components, vocab_size, depth, heads) |
     end
 end
 
-scheduler = burnin_learning_schedule(0.00003f0, 0.005f0, 1.01f0, 0.99995f0)
-opt_state = Flux.setup(Muon(opt=AdamW(scheduler.lr)), model);
+ENV["MLDATADEVICES_SILENCE_WARN_NO_GPU"] = "1"
+
+# Hyperparameters
+embed_dim = 256
+mixture_components = 32
+vocab_size = length(vocab_dict)
+depth = 10
+heads = 8
+batchsize = 64
+nbatches = 2000
+nepochs = 100
+
+# Initialize model and optimizer
+model = MOGMOGModel(; embed_dim, mixture_components, vocab_size, depth, heads) |> gpu;
+scheduler = burnin_learning_schedule(0.000001f0, 0.001f0, 1.005f0, 0.9999f0)
+opt_state = Flux.setup(Muon(eta = scheduler.lr), model)
+
+
 
 #scheduler = linear_decay_schedule(0.000153f0, 0.0000000001f0, 9800) 
 
 # Training loop
 all_losses = Float32[]
+
 for epoch in 1:nepochs
     println("Epoch $epoch")
     shuffled = shuffle(data)
@@ -82,17 +97,17 @@ for epoch in 1:nepochs
         batch_end = min(i * batchsize, length(shuffled))
         mols = shuffled[batch_start:batch_end]
         batch = MOGMOG.pad_and_batch(mols, vocab_dict; random_rigid=true) |> gpu
-        loss_val, (grad,) = Flux.withgradient(model) do m
+        loss_val, grad = Flux.withgradient(model) do m
             loss_atom_type, loss_position, loss_climb = losses(m, batch)
             i % 50 == 0 && Flux.ChainRulesCore.@ignore_derivatives println(
                 "Batch $i, loss_atom_type = $(round(loss_atom_type, digits=4)), loss_position = $(round(loss_position, digits=4)), loss_climb = $(round(loss_climb, digits=4)), lr = $(round(scheduler.lr, digits=6))")
             loss_atom_type + loss_position + loss_climb
         end
-        Flux.update!(opt_state, model, grad)
+        Flux.update!(opt_state, model, grad[1])
         Flux.adjust!(opt_state, next_rate(scheduler))
         push!(all_losses, loss_val)
-        if i % 100 == 0
-            samp = MOGMOG.sample(20, model)
+        if i % 250 == 0
+            samp = MOGMOG.sample(20, cpu(model))
             write("samples/$(epoch)_$(i).xyz.txt", MOGMOG.to_xyz([reverse_vocab_dict[q] for q in samp[1]], samp[2]))
         end
     end
@@ -107,6 +122,10 @@ end
 
 
 
+atom_logits, μ, σ, logw, climb_logits = model(batch.atom_types, batch.positions, batch.climbs, batch.anchors, batch.indexes, batch.displacements)
+
+atom_logits, μ, σ, logw, climb_logits = model(batch.atom_types, batch.positions, batch.climbs, batch.anchors, batch.indexes)
+
 running_median = [median(all_losses[i:i+100]) for i in 1:length(all_losses)-100]
 plot(all_losses, title="Training Loss", xlabel="Batch", ylabel="Loss", ylims=(minimum(all_losses) - 0.1, 7.5), label = :none)
 plot!(running_median, color = :red, label = :none)
@@ -116,8 +135,8 @@ savefig("training_loss_full.pdf")
 
 #
 
-
-samp = MOGMOG.sample(20, model)
+cpumodel = cpu(model)
+samp = MOGMOG.sample(20, cpumodel)
 println(MOGMOG.to_xyz([reverse_vocab_dict[q] for q in samp[1]], samp[2]))
 
 

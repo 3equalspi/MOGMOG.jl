@@ -1,20 +1,5 @@
 # MOGMOG.jl - A model for molecular embeddings using Mixture of Gaussians (MoG) and Transformers
 
-#=
-
-@concrete struct IPADART
-    transformer
-end
-
-function (dart::IPADART)(x::AbstractArray; mask=:causal)
-    h = rearrange(x, (:d, :K, :L, ..) --> (:d, (:K, :L), ..))
-    mask === :causal && (mask = causal_mask(h))
-    return reshape(dart.transformer(h; mask), size(x))
-end
-
-Flux.@layer IPADART
-=#
-
 
 function pairwise_sqeuclidean(x,y)
     A_sqnorms = sum(abs2, x, dims=2)
@@ -35,8 +20,6 @@ function pair_features(positions, anchors, indexes)
     return vcat(a, o, e1, e2, e3)
 end
 
-#pf = pair_features(batch.positions, batch.anchors, batch.indexes);
-
 
 struct MOGMOGModel{L}
     layers::L
@@ -52,8 +35,8 @@ function MOGMOGModel(;
     encoder = MOGencoder(embed_dim, vocab_size, max_climb + 1)
     darts = [DART(TransformerBlock(embed_dim, heads)) for _ in 1:depth]    
     for d in darts
-        d.transformer.attention.wo.weight ./= 10
-        d.transformer.feed_forward.w2.weight ./= 10
+        d.transformer.attention.wo.weight ./= depth
+        d.transformer.feed_forward.w2.weight ./= depth
     end
     pair_rff = RandomFourierFeatures(7 => 128, 1.0f0)
     pair_encode = Dense(128 => pair_dim)
@@ -62,7 +45,7 @@ function MOGMOGModel(;
     atom_decoder = Chain(StarGLU(embed_dim, 4*embed_dim), Dense(embed_dim, vocab_size, bias=false))
     climb_decoder = Chain(StarGLU(embed_dim, 4*embed_dim), Dense(embed_dim, max_climb + 1))
     rope = RoPE(embed_dim ÷ heads, 1000)
-    control = randn(Float32, embed_dim, 5, 1, 1) 
+    control = randn(Float32, embed_dim, 5) 
     return MOGMOGModel((;encoder, pair_rff, pair_encode, darts, dart_pfs, mog_decoder, atom_decoder, climb_decoder, rope, control))
 end
 
@@ -72,11 +55,12 @@ function (model::MOGMOGModel)(
     climbs::AbstractArray{Int},
     anchors,
     indexes,
+    displacements,
 )
     mmm = model.layers
     base_pf = Flux.Zygote.@ignore mmm.pair_rff(pair_features(positions, anchors, indexes))
     pf = mmm.pair_encode(base_pf)
-    h = mmm.encoder(atom_types, positions, climbs) # D x L x B. WHAT? # D x 5 x L x B??
+    h = mmm.encoder(atom_types, positions, climbs, anchors, indexes, displacements) # D x L x B. WHAT? # D x 5 x L x B??
     for (di, dart) in enumerate(mmm.darts)
         h = dart(h, mmm.dart_pfs[di](pf); rope=mmm.rope)
     end
